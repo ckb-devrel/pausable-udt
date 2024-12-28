@@ -1,8 +1,10 @@
 # `pausable-udt`
->
+
 > [`[EN/CN] Script-Sourced Rich Information - 来源于 Script 的富信息`](https://talk.nervos.org/t/en-cn-script-sourced-rich-information-script/8256): General introduction to SSRI.
 >
 > [`pausable-udt`](https://github.com/Alive24/pausable-udt): The first fully SSRI compliant and production ready contract that exemplifies all use cases that SSRI protocool covers.
+>
+> [`pausable-udt` - Audit Report](https://github.com/Alive24/pausable-udt/blob/master/20241224-Pausable-UDT-Final-Audit-Report.pdf)
 >
 > [`ssri-server`](https://github.com/ckb-devrel/ssri-server): Server for calling SSRI methods.
 >
@@ -27,6 +29,7 @@ Based on the experience and insights, as well as the latest updates of utilities
 SSRI stands for `Script Sourced Rich Information`; it is a protocol for strong bindings of relevant information and conventions to the Script itself on CKB. For more information, please read [[EN/CN] Script-Sourced Rich Information - 来源于 Script 的富信息](https://talk.nervos.org/t/en-cn-script-sourced-rich-information-script/8256).
 
 Such bindings would take place in a progressive pattern:
+
 1. On the level of validating transactions, by specifically using Rust Traits, we recognize the purpose (or more specifically, the `Intent` of running the script) (e.g., `minting UDT`, `transferring`) and build relevant validation logics within the scope of the corresponding method.
 2. On the level of reading and organizing contract code, by selectively implementing methods of public module traits (e.g. `UDT`, `UDTPausable`) in combinations, generic users and devs would be able to quickly understand and organize functionalities of contracts as well as the relevant adaptations / integrations in dApps , especially in use cases involving multiple distinct contracts (and very likely from different projects) within same transactions.
 3. On the level of dApp integration and interactions with `ckb_ssri_cli`, SSRI-Compliant contracts provide predictable interfaces for information query (e.g. generic metadata source for explorer, CCC integration for pubic trait methods such as UDT), transaction generation/completion, and output data calculations which reduces engineering workload significantly by sharing code effectively.
@@ -117,7 +120,7 @@ pub struct ScriptLike {
 
 ### Recipes
 
-**Transfer**
+### Transfer
 
 ```yaml
 Inputs:
@@ -147,7 +150,7 @@ Outputs:
 
 - While transferring, transactions must make sure that none of the user lock script hashes in the transaction is included (“paused”); otherwise, the transaction would return `UDTPausableError::AbortedFromPause` . In case of using external pausable data cell, all transactions must include all the external pausable data cell in the `CellDep` .
 
-**Pause / Unpause (Only Available if using external pausable data cell)**
+### Pause / Unpause (Only Available if using external pausable data cell)
 
 ```yaml
 Inputs:
@@ -160,7 +163,7 @@ Inputs:
         Type:
             code: <Type ID Type>
             args: <Type ID>
-        Lock: 
+        Lock:
           code: <Proxy Lock>
           args: <Proxy Lock Cell type hash>
         Data: UDTMetadataData
@@ -175,7 +178,7 @@ Outputs:
         Type:
             code: <Type ID Type>
             args: <Type ID>
-        Lock: 
+        Lock:
           code: <Proxy Lock>
           args: <Proxy Lock Type ID>
         Data: UDTMetadataData
@@ -183,7 +186,7 @@ Outputs:
 
 - By adding / removing lock hashes to the pause list, admins can modify the pausing policies according to the specifications of the project.
 
-## Interacting with `ckb-ssri-cli`  (or anything with TypeScript)
+## Interacting with `ckb-ssri-cli` (or anything with TypeScript)
 
 - See examples in <https://github.com/Alive24/ckb_ssri_cli>. It would be transferrable to any TypeScript project.
 - You would need to run an <https://github.com/Alive24/ssri-server> locally at the moment.
@@ -375,42 +378,43 @@ const payload = {
 };
 
 // Get transaction and send it
-    // Send POST request
+// Send POST request
 try {
-    const response = await axios.post(process.env.SSRI_SERVER_URL!, payload, {
-        headers: {'Content-Type': 'application/json'},
-    })
-    const mintTx = blockchain.Transaction.unpack(response.data.result)
-    const cccMintTx = ccc.Transaction.from(mintTx)
-    await cccMintTx.completeInputsByCapacity(signer)
-    await cccMintTx.completeFeeBy(signer)
-    const mintTxHash = await signer.sendTransaction(cccMintTx)
-    this.log(`Mint ${args.toAmount} ${args.symbol} to ${args.toAddress}. Tx hash: ${mintTxHash}`)
+  const response = await axios.post(process.env.SSRI_SERVER_URL!, payload, {
+    headers: { "Content-Type": "application/json" },
+  });
+  const mintTx = blockchain.Transaction.unpack(response.data.result);
+  const cccMintTx = ccc.Transaction.from(mintTx);
+  await cccMintTx.completeInputsByCapacity(signer);
+  await cccMintTx.completeFeeBy(signer);
+  const mintTxHash = await signer.sendTransaction(cccMintTx);
+  this.log(
+    `Mint ${args.toAmount} ${args.symbol} to ${args.toAddress}. Tx hash: ${mintTxHash}`
+  );
 } catch (error) {
-    // ISSUE: [Prettify responses from SSRI calls #21](https://github.com/Alive24/ckb_ssri_cli/issues/21)
-    console.error('Request failed', error)
+  console.error("Request failed", error);
 }
 ```
 
 ## Testing
 
 - Due to the limitations of `ckb_testtools`, it is recommended to test the same SSRI-Compliant Contract on two level:
-    - On-chain Verification: Test with `ckb_testtools`
-    - Off-chain Query/Integration, Transaction Generations/Completions: Test with `ckb_ssri_cli` against the latest deployment.
+  - On-chain Verification: Test with `ckb_testtools`
+  - Off-chain Query/Integration, Transaction Generations/Completions: Test with `ckb_ssri_cli` against the latest deployment.
 
 ## Deployment and Migration
 
 - Deploy and upgrade with [ckb-cinnabar](https://github.com/ashuralyk/ckb-cinnabar?tab=readme-ov-file#deployment-module) for easier deployment and migration with Type ID.
 
 ```bash
-ckb-cinnabar deploy --contract-name pausable-udt --tag transaction.v241112 --payer-address ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqtxe0gs9yvwrsc40znvdc6sg4fehd2mttsngg4t4 --type-id 
+ckb-cinnabar deploy --contract-name pausable-udt --tag transaction.v241112 --payer-address ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqtxe0gs9yvwrsc40znvdc6sg4fehd2mttsngg4t4 --type-id
 
 ckb-cinnabar migrate --contract-name pausable-udt --from-tag v241030.1 --to-tag v241030.2
 ```
 
 ## Roadmaps and Goal
 
-- [x]  Equivalent functionalities of sUDT in pure Rust;
-- [x]  Validations of UDT transactions in fallback function on predefined paused locks hashes;
-- [x]  First integration with dApps for the purpose of demonstration with CCC.
-- [x]  Fully supported SSRI protocol
+- [x] Equivalent functionalities of sUDT in pure Rust;
+- [x] Validations of UDT transactions in fallback function on predefined paused locks hashes;
+- [x] First integration with dApps for the purpose of demonstration with CCC.
+- [x] Fully supported SSRI protocol
