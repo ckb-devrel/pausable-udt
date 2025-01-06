@@ -11,9 +11,9 @@ use ckb_ssri_sdk::prelude::decode_u8_32_vector;
 use ckb_ssri_sdk::utils::should_fallback;
 use ckb_ssri_sdk_proc_macro::ssri_methods;
 use ckb_std::ckb_types::packed::{
-    Bytes, BytesVec, BytesVecBuilder, Script, ScriptBuilder, Transaction,
+    BytesVec, BytesVecBuilder, Script, Transaction,
 };
-use ckb_std::ckb_types::prelude::{Pack, ShouldBeOk};
+use ckb_std::ckb_types::prelude::Pack;
 use ckb_std::debug;
 #[cfg(not(test))]
 use ckb_std::default_alloc;
@@ -47,7 +47,7 @@ pub fn get_pausable_data() -> Result<UDTPausableData, Error> {
             // Note: Paused lock hash for testing for ckb_ssri_cli. The address is ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqdd3z25u024cj4d8rutkggjvw28r42rt0qx5z9aj
             "0x62cb9a2e0b945a6b23067effebf3f5d6cd7a29f7c9a07021caf41cbc40358738",
         ]),
-        // Type hash of another cell that also contains UDTPausableData
+        // Type Script of another cell that also contains UDTPausableData
         // NOTE: External pause list used for testing purpose. It pauses ckt1qzda0cr08m85hc8jlnfp3zer7xulejywt49kt2rr0vthywaa50xwsqgtlcnzzna2tqst7jw78egjpujn7hdxpackjmmdp ("0xd19228c64920eb8c3d79557d8ae59ee7a14b9d7de45ccf8bafacf82c91fc359e")
         next_type_script: Some(ScriptLike {
             code_hash: decode_hex(
@@ -74,7 +74,8 @@ fn program_entry_wrap() -> Result<(), Error> {
     }
 
     debug!("Entering ssri_methods");
-    // NOTE: In the future, methods can be reflected automatically from traits using procedural macros and entry methods to other methods of the same trait for a more concise and maintainable entry function.
+    // NOTE: The following part is an entry function acting as an controller for all SSRI methods and also handles the deserialization/serialization. 
+    // In the future, methods can be reflected automatically from traits using procedural macros and entry methods to other methods of the same trait for a more concise and maintainable entry function.
     let res: Cow<'static, [u8]> = ssri_methods!(
         argv: &argv,
         invalid_method: Error::SSRIMethodsNotFound,

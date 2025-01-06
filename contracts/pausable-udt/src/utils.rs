@@ -3,13 +3,8 @@ use alloc::{ffi::CString, vec::Vec};
 use ckb_ssri_sdk::public_module_traits::udt::UDT_LEN;
 use ckb_std::{
     ckb_constants::Source,
-    ckb_types::{
-        bytes::Bytes,
-        packed::{CellDepBuilder, OutPointBuilder, Transaction},
-        prelude::*,
-    },
+    ckb_types::bytes::Bytes,
     debug,
-    env::Arg,
     high_level::{decode_hex, load_cell_data, load_cell_lock_hash, QueryIter},
 };
 
