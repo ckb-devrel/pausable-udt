@@ -11,7 +11,7 @@ use ckb_ssri_sdk::prelude::decode_u8_32_vector;
 use ckb_ssri_sdk::utils::should_fallback;
 use ckb_ssri_sdk_proc_macro::ssri_methods;
 use ckb_std::ckb_types::packed::{
-    BytesVec, BytesVecBuilder, Script, Transaction,
+    Byte32, Bytes, BytesVec, BytesVecBuilder, Script, ScriptBuilder, Transaction
 };
 use ckb_std::ckb_types::prelude::Pack;
 use ckb_std::debug;
@@ -34,10 +34,12 @@ mod error;
 mod fallback;
 mod modules;
 mod utils;
+mod molecule;
 
 use ckb_std::high_level::decode_hex;
 use ckb_std::syscalls::{pipe, write};
 use error::Error;
+use ::molecule::prelude::Reader;
 use serde_molecule::to_vec;
 
 pub fn get_pausable_data() -> Result<UDTPausableData, Error> {
@@ -86,7 +88,8 @@ fn program_entry_wrap() -> Result<(), Error> {
         "UDT.icon" => Ok(Cow::from(modules::PausableUDT::icon()?.to_vec())),
         "UDTPausable.is_paused" => {
             let response = modules::PausableUDT::is_paused(&decode_u8_32_vector(decode_hex(argv[1].as_ref())?).map_err(|_|error::Error::SSRIMethodsArgsInvalid)?)?;
-            Ok(Cow::from(vec!(response as u8)))
+            let response_bytes = response.iter().map(|b| if *b { 1 } else { 0 }).collect::<Vec<u8>>().pack();
+            Ok(Cow::from(response_bytes.as_bytes().to_vec()))
         },
         "UDTPausable.enumerate_paused" => {
             let offset = u64::from_le_bytes(decode_hex(argv[1].as_ref())?.try_into().unwrap_or_default());
@@ -96,11 +99,16 @@ fn program_entry_wrap() -> Result<(), Error> {
         },
         "UDT.transfer" => {
             debug!("program_entry_wrap | Entered UDT.transfer");
-            let to_lock_bytes_vec = BytesVec::new_unchecked(decode_hex(argv[2].as_ref())?.try_into().unwrap());
-            let to_lock_vec: Vec<Script> = to_lock_bytes_vec
-                .into_iter()
-                .map(|bytes| Script::new_unchecked(bytes.unpack()))
-                .collect();
+            let to_lock_vec_molecule = molecule::ScriptVec::from_slice(decode_hex(argv[2].as_ref())?.as_slice()).map_err(|_|Error::MoleculeVerificationError)?;
+            let mut to_lock_vec: Vec<Script> = vec![];
+            for script in to_lock_vec_molecule.into_iter() {
+                let parsed_script = ScriptBuilder::default()
+                    .code_hash(Byte32::from_slice(script.as_reader().code_hash().to_entity().as_slice()).map_err(|_|Error::MoleculeVerificationError)?)
+                    .hash_type(script.as_reader().hash_type().to_entity())
+                    .args(Bytes::from_slice(script.as_reader().args().to_entity().as_slice()).map_err(|_|Error::MoleculeVerificationError)?)
+                    .build();
+                to_lock_vec.push(parsed_script);
+            }
 
             let to_amount_bytes = decode_hex(argv[3].as_ref())?;
             let to_amount_vec: Vec<u128> = to_amount_bytes[4..]
@@ -126,11 +134,16 @@ fn program_entry_wrap() -> Result<(), Error> {
         },
         "UDT.mint" => {
             debug!("program_entry_wrap | Entered UDT.mint");
-            let to_lock_bytes_vec = BytesVec::new_unchecked(decode_hex(argv[2].as_ref())?.try_into().unwrap());
-            let to_lock_vec: Vec<Script> = to_lock_bytes_vec
-                .into_iter()
-                .map(|bytes| Script::new_unchecked(bytes.unpack()))
-                .collect();
+            let to_lock_vec_molecule = molecule::ScriptVec::from_slice(decode_hex(argv[2].as_ref())?.as_slice()).map_err(|_|Error::MoleculeVerificationError)?;
+            let mut to_lock_vec: Vec<Script> = vec![];
+            for script in to_lock_vec_molecule.into_iter() {
+                let parsed_script = ScriptBuilder::default()
+                    .code_hash(Byte32::from_slice(script.as_reader().code_hash().to_entity().as_slice()).map_err(|_|Error::MoleculeVerificationError)?)
+                    .hash_type(script.as_reader().hash_type().to_entity())
+                    .args(Bytes::from_slice(script.as_reader().args().to_entity().as_slice()).map_err(|_|Error::MoleculeVerificationError)?)
+                    .build();
+                to_lock_vec.push(parsed_script);
+            }
             debug!("program_entry_wrap | to_lock_vec: {:?}", to_lock_vec);
 
             let to_amount_bytes = decode_hex(argv[3].as_ref())?;

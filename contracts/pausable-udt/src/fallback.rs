@@ -27,7 +27,7 @@ pub fn fallback() -> Result<(), Error> {
         index += 1;
     }
 
-    if PausableUDT::is_paused(&lock_hashes)? {
+    if PausableUDT::is_paused(&lock_hashes)?.iter().any(|&b| b) {
         return Err(Error::AbortedFromPause);
     }
 

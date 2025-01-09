@@ -4,6 +4,7 @@ use crate::utils::{check_owner_mode, collect_inputs_amount, collect_outputs_amou
 use alloc::ffi::CString;
 use alloc::string::String;
 use alloc::vec::Vec;
+use alloc::vec;
 use ckb_hash::new_blake2b;
 use ckb_ssri_sdk::public_module_traits::udt::{UDTPausable, UDTPausableData, UDT};
 use ckb_ssri_sdk::utils::high_level::{
@@ -15,8 +16,8 @@ use ckb_std::ckb_types::core::ScriptHashType;
 use ckb_std::ckb_types::packed::{
     Byte, Byte32, Byte32Vec, BytesVec, BytesVecBuilder, CellDep, CellDepVec, CellDepVecBuilder,
     CellInput, CellInputVec, CellInputVecBuilder, CellOutput, CellOutputBuilder,
-    CellOutputVecBuilder, RawTransactionBuilder, Script, ScriptBuilder, ScriptOptBuilder,
-    Transaction, TransactionBuilder, Uint32, Uint64,
+    CellOutputVecBuilder, RawTransactionBuilder, Script, ScriptBuilder, ScriptOpt,
+    ScriptOptBuilder, Transaction, TransactionBuilder, Uint32, Uint64,
 };
 use ckb_std::ckb_types::{bytes::Bytes, prelude::*};
 use ckb_std::debug;
@@ -271,6 +272,7 @@ impl UDT for PausableUDT {
 impl UDTPausable for PausableUDT {
     // #[ssri_method(level = "cell", transaction = true)]
     fn pause(tx: Option<Transaction>, lock_hashes: &Vec<[u8; 32]>) -> Result<Transaction, Error> {
+        let mut deduped_lock_hashes = lock_hashes.clone();
         let tx_builder = match tx {
             Some(ref tx) => tx.clone().as_builder(),
             None => TransactionBuilder::default(),
@@ -287,6 +289,9 @@ impl UDTPausable for PausableUDT {
 
         debug!("Automatically redirect to the last pause list cell.");
         let mut current_pausable_data = get_pausable_data()?;
+        // Dedup lock_hashes against current_pausable_data.pause_list
+        deduped_lock_hashes = deduped_lock_hashes.into_iter().filter(|lock_hash| current_pausable_data.pause_list.contains(lock_hash)).collect();
+
         while let Some(ref next_type_script_like) = current_pausable_data.next_type_script {
             debug!("Next type script like: {:?}", next_type_script_like);
             let next_type_script = ScriptBuilder::default()
@@ -299,6 +304,8 @@ impl UDTPausable for PausableUDT {
                 &find_cell_data_by_out_point(next_cell_out_point.clone())?,
                 false,
             )?;
+            // Dedup lock_hashes against next_pausable_data.pause_list
+            deduped_lock_hashes = deduped_lock_hashes.into_iter().filter(|lock_hash| next_pausable_data.pause_list.contains(lock_hash)).collect();
             if next_pausable_data.next_type_script.is_none() {
                 last_cell_type_script = Some(next_type_script.clone());
             }
@@ -306,45 +313,57 @@ impl UDTPausable for PausableUDT {
         }
         if last_cell_type_script.is_none() {
             debug!("No pause list cell found. Try to generate the first pause list cell.");
-            match load_input(0, Source::GroupInput) {
-                Ok(first_input_cell_input) => {
-                    let first_input_cell = load_cell(0, Source::GroupInput)?;
-                    let mut hasher = new_blake2b();
-                    hasher.update(first_input_cell_input.as_slice());
-                    hasher.update(&0usize.to_le_bytes());
-                    let mut ret = [0; 32];
-                    hasher.finalize(&mut ret);
-                    let type_id_bytes = ret.to_vec();
-                    let type_id_script_code_hash_string =
-                        "0x00000000000000000000000000000000000000000000000000545950455f4944";
-                    let type_id_script_code_hash_cstring =
-                        CString::new(type_id_script_code_hash_string).unwrap();
-                    let new_type_id_script = Script::new_builder()
-                        .code_hash(
-                            Byte32::from_slice(
-                                &decode_hex(type_id_script_code_hash_cstring.as_c_str()).unwrap(),
+            match tx {
+                Some(ref tx) => match tx.raw().inputs().get(0) {
+                    Some(first_input_cell_input) => {
+                        let first_input_outpoint = first_input_cell_input.previous_output();
+                        let first_input_cell =
+                            find_cell_by_out_point(first_input_outpoint.clone())?;
+                        let mut hasher = new_blake2b();
+                        hasher.update(first_input_cell_input.as_slice());
+                        let type_id_index = tx.raw().outputs().len();
+                        hasher.update(&type_id_index.to_le_bytes());
+                        let mut ret = [0; 32];
+                        hasher.finalize(&mut ret);
+                        let type_id_bytes = ret.to_vec();
+                        let type_id_script_code_hash_string =
+                            "0x00000000000000000000000000000000000000000000000000545950455f4944";
+                        let cstring = CString::new(type_id_script_code_hash_string)
+                            .map_err(|_| Error::InvalidPauseData)?;
+                        let type_id_script_code_hash_cstr = &cstring.as_c_str()[2..];
+                        let new_type_id_script = Script::new_builder()
+                            .code_hash(
+                                Byte32::from_slice(&decode_hex(type_id_script_code_hash_cstr)?)
+                                    .map_err(|_| Error::MoleculeVerificationError)?,
                             )
-                            .unwrap(),
-                        )
-                        .hash_type(ScriptHashType::Type.into())
-                        .args(type_id_bytes.clone().pack())
-                        .build();
-                    last_cell_type_script = Some(new_type_id_script.clone());
-                    new_cell_output = CellOutput::new_builder()
-                        .capacity(first_input_cell.capacity())
-                        .build();
-                    new_output_data = UDTPausableData {
-                        pause_list: lock_hashes.clone(),
-                        next_type_script: None,
-                    };
-                }
-                Err(_err) => {
-                    return Err(Error::NoPausePermission);
-                }
+                            .hash_type(ScriptHashType::Type.into())
+                            .args(type_id_bytes.clone().pack())
+                            .build();
+                        last_cell_type_script = Some(new_type_id_script.clone());
+                        new_cell_output = CellOutput::new_builder()
+                            .lock(first_input_cell.lock())
+                            .type_(
+                                ScriptOptBuilder::default()
+                                    .set(Some(new_type_id_script))
+                                    .build(),
+                            )
+                            .build();
+                        new_output_data = UDTPausableData {
+                            pause_list: deduped_lock_hashes.clone(),
+                            next_type_script: None,
+                        };
+                    }
+                    None => return Err(Error::NoPausePermission),
+                },
+                None => return Err(Error::NoPausePermission),
             }
         } else {
             let last_cell_out_point = find_out_point_by_type(last_cell_type_script.should_be_ok())?;
             new_cell_output = find_cell_by_out_point(last_cell_out_point.clone())?;
+            new_cell_output = new_cell_output
+                .as_builder()
+                .capacity(Uint64::default())
+                .build();
             let last_cell_data = find_cell_data_by_out_point(last_cell_out_point.clone())?;
             let mut pausable_data: UDTPausableData = from_slice(&last_cell_data, false)?;
             pausable_data.pause_list.extend(lock_hashes.clone());
@@ -474,6 +493,7 @@ impl UDTPausable for PausableUDT {
                         .build(),
                 );
                 new_cell_output = find_cell_by_out_point(next_pausable_data_outpoint.clone())?;
+                new_cell_output = new_cell_output.as_builder().capacity(Uint64::default()).build();
                 input_vec_builder = input_vec_builder.push(new_cell_input.should_be_ok());
                 cell_output_vec_builder = cell_output_vec_builder.push(new_cell_output);
                 let mut new_pausable_data = next_pausable_data.clone();
@@ -517,22 +537,22 @@ impl UDTPausable for PausableUDT {
             .build());
     }
 
-    // #[ssri_method(level = "code", transaction = false)]
-    fn is_paused(lock_hashes: &Vec<[u8; 32]>) -> Result<bool, Error> {
+    // #[ssri_method(level = "script", transaction = false)]
+    fn is_paused(lock_hashes: &Vec<[u8; 32]>) -> Result<Vec<bool>, Error> {
         debug!("Entered is_paused");
         debug!("lock_hashes: {:?}", lock_hashes);
-
+        // By default all not paused
+        let mut result = vec![false; lock_hashes.len()];
+        
         let mut current_pausable_data = get_pausable_data()?;
         let mut seen_type_hashes: Vec<Byte32> = Vec::new();
 
         loop {
             // Check current pausable data's pause list
-            if current_pausable_data
-                .pause_list
-                .iter()
-                .any(|x| lock_hashes.contains(x))
-            {
-                return Ok(true);
+            for (idx, lock_hash) in lock_hashes.iter().enumerate() {
+                if current_pausable_data.pause_list.contains(lock_hash) {
+                    result[idx] = true;
+                }
             }
 
             // Check for next type script in the chain
@@ -581,7 +601,7 @@ impl UDTPausable for PausableUDT {
             }
         }
 
-        Ok(false)
+        Ok(result)
     }
 
     // #[ssri_method(level = "code", transaction = false)]

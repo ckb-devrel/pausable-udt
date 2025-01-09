@@ -82,7 +82,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2df8fb6acacdb056b69ec1071491323ab46e90bd6fec3dbc8964f44366f03866"
 dependencies = [
  "blake2b-ref",
- "blake2b-rs",
 ]
 
 [[package]]
@@ -147,6 +146,7 @@ dependencies = [
  "ckb-std",
  "ckb_ssri_sdk",
  "ckb_ssri_sdk_proc_macro",
+ "molecule",
  "serde",
  "serde_molecule",
 ]

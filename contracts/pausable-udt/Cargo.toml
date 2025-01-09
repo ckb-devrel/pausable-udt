@@ -9,7 +9,8 @@ ckb_ssri_sdk = { path = "../../../ckb_ssri_sdk/ckb_ssri_sdk"}
 serde_molecule = { version = "1.1.0", default-features = false, features = ["alloc"] }
 serde = { version = "1.0.210", default-features = false, features = ["derive"] }
 ckb_ssri_sdk_proc_macro = { path = "../../../ckb_ssri_sdk/ckb_ssri_sdk_proc_macro"}
-ckb-hash = { version = "0.120.0" }
+ckb-hash = { version = "0.120.0", default-features = false, features = ["ckb-contract"] }
+molecule = { version = "0.8.0", default-features = false, features = ["bytes_vec"] }
 [profile.release]
 overflow-checks = true
 opt-level = 3
