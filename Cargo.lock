@@ -76,6 +76,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ckb-hash"
+version = "0.120.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2df8fb6acacdb056b69ec1071491323ab46e90bd6fec3dbc8964f44366f03866"
+dependencies = [
+ "blake2b-ref",
+ "blake2b-rs",
+]
+
+[[package]]
 name = "ckb-std"
 version = "0.16.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -89,9 +99,7 @@ dependencies = [
 
 [[package]]
 name = "ckb_ssri_sdk"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85fb51b7ae84531948cb5698a5ff46d3cbf3e36dcec8172cb5d5a6a97b4a0052"
+version = "0.1.2-alpha.1"
 dependencies = [
  "ckb-std",
  "ckb_ssri_sdk_proc_macro",
@@ -101,9 +109,7 @@ dependencies = [
 
 [[package]]
 name = "ckb_ssri_sdk_proc_macro"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e6e439f89d56a2ac637295ba68ac0dc91b6560c803cdf4f645e21a433eec81d"
+version = "0.1.2-alpha.1"
 dependencies = [
  "ckb-hash 0.116.1",
  "proc-macro2",
@@ -137,6 +143,7 @@ dependencies = [
 name = "pausable-udt"
 version = "0.1.0"
 dependencies = [
+ "ckb-hash 0.120.0",
  "ckb-std",
  "ckb_ssri_sdk",
  "ckb_ssri_sdk_proc_macro",

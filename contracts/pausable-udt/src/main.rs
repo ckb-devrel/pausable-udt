@@ -80,11 +80,9 @@ fn program_entry_wrap() -> Result<(), Error> {
         argv: &argv,
         invalid_method: Error::SSRIMethodsNotFound,
         invalid_args: Error::SSRIMethodsArgsInvalid,
-        "SSRI.get_cell_deps" => Ok(Cow::from(&[0, 0, 0, 0][..])),
         "UDT.name" => Ok(Cow::from(modules::PausableUDT::name()?.to_vec())),
         "UDT.symbol" => Ok(Cow::from(modules::PausableUDT::symbol()?.to_vec())),
         "UDT.decimals" => Ok(Cow::from(modules::PausableUDT::decimals()?.to_le_bytes().to_vec())),
-        "UDT.balance" => Ok(Cow::from(modules::PausableUDT::balance()?.to_le_bytes().to_vec())),
         "UDT.icon" => Ok(Cow::from(modules::PausableUDT::icon()?.to_vec())),
         "UDTPausable.is_paused" => {
             let response = modules::PausableUDT::is_paused(&decode_u8_32_vector(decode_hex(argv[1].as_ref())?).map_err(|_|error::Error::SSRIMethodsArgsInvalid)?)?;
@@ -94,12 +92,7 @@ fn program_entry_wrap() -> Result<(), Error> {
             let offset = u64::from_le_bytes(decode_hex(argv[1].as_ref())?.try_into().unwrap_or_default());
             let limit = u64::from_le_bytes(decode_hex(argv[2].as_ref())?.try_into().unwrap_or_default());
             let response = modules::PausableUDT::enumerate_paused(offset, limit)?;
-            let mut pausable_data_vec_builder = BytesVecBuilder::default();
-            for item in response {
-                pausable_data_vec_builder =
-                    pausable_data_vec_builder.push(to_vec(&item, false)?.pack());
-            }
-            Ok(Cow::from(pausable_data_vec_builder.build().as_bytes().to_vec()))
+            Ok(Cow::from(response.as_bytes().to_vec()))
         },
         "UDT.transfer" => {
             debug!("program_entry_wrap | Entered UDT.transfer");
