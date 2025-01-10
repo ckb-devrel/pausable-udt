@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::get_pausable_data;
+use crate::{get_pausable_data, DECIMALS, NAME, SYMBOL};
 use crate::utils::{check_owner_mode, collect_inputs_amount, collect_outputs_amount};
 use alloc::ffi::CString;
 use alloc::string::String;
@@ -16,13 +16,13 @@ use ckb_std::ckb_types::core::ScriptHashType;
 use ckb_std::ckb_types::packed::{
     Byte, Byte32, Byte32Vec, BytesVec, BytesVecBuilder, CellDep, CellDepVec, CellDepVecBuilder,
     CellInput, CellInputVec, CellInputVecBuilder, CellOutput, CellOutputBuilder,
-    CellOutputVecBuilder, RawTransactionBuilder, Script, ScriptBuilder, ScriptOpt,
+    CellOutputVecBuilder, RawTransactionBuilder, Script, ScriptBuilder,
     ScriptOptBuilder, Transaction, TransactionBuilder, Uint32, Uint64,
 };
 use ckb_std::ckb_types::{bytes::Bytes, prelude::*};
 use ckb_std::debug;
 use ckb_std::high_level::{
-    decode_hex, load_cell, load_cell_data, load_cell_type, load_input, load_script,
+    decode_hex, load_cell_data, load_cell_type, load_script,
 };
 use serde_molecule::{from_slice, to_vec};
 
@@ -145,17 +145,17 @@ impl UDT for PausableUDT {
 
     // #[ssri_method(level = "script")]
     fn name() -> Result<Bytes, Self::Error> {
-        Ok(Bytes::from(String::from("PUDT").into_bytes()))
+        Ok(Bytes::from(String::from(NAME).into_bytes()))
     }
 
     // #[ssri_method(level = "script")]
     fn symbol() -> Result<Bytes, Self::Error> {
-        Ok(Bytes::from(String::from("PUDT").into_bytes()))
+        Ok(Bytes::from(String::from(SYMBOL).into_bytes()))
     }
 
     // #[ssri_method(level = "script")]
     fn decimals() -> Result<u8, Self::Error> {
-        Ok(6u8)
+        Ok(DECIMALS)
     }
     // #[ssri_method(level = "script", transaction = true)]
     fn mint(
@@ -262,7 +262,7 @@ impl UDT for PausableUDT {
             return Err(Error::NoMintPermission);
         }
     }
-
+    // #[ssri_method(level = "script")]
     fn icon() -> Result<Bytes, Self::Error> {
         Ok(Bytes::from(String::from("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDgiIGhlaWdodD0iNDgiIHZpZXdCb3g9IjAgMCA0OCA0OCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iMjQiIGZpbGw9IiMwNTFGNDQiLz4KPHBhdGggZD0iTTE1LjM5NzQgMjkuOTMyMUMxNC4xNTk0IDI5LjkzMjEgMTMuMDU5IDI5LjI5NjMgMTIuNDQ4MyAyOC4yMjkzQzExLjgzNzYgMjcuMTYyMyAxMS44NTEzIDI1Ljg5NjEgMTIuNDg2OCAyNC44NDI4TDIzLjA2MTcgNy4yNzQzOEwyMy4wNzU0IDcuMjU1MjhDMjMuNjIyOSA2LjQ1NTcyIDI0LjQ3ODQgNiAyNS40MjIgNkMyNi4yODMxIDYgMjcuMTI3NyA2LjM4NzUgMjcuNjgwNiA3LjAzNjk3QzI4LjIxOTggNy42NzI3OSAyOC40MzcxIDguNDkxNDUgMjguMjg4NiA5LjM0Mjg1TDI2LjA0OTMgMjIuMjI4NUwyMS44Njc3IDI0LjMyN0wyMy43Mjc0IDEzLjUxNTNMMTYuNDI5IDI1Ljk5NDRIMjAuMzY1N0wxOS42MjAyIDI5LjkzMjFIMTUuNDAwMUgxNS4zOTc0WiIgZmlsbD0idXJsKCNwYWludDBfbGluZWFyXzMzMzM5XzkzMTcpIi8+CjxwYXRoIGQ9Ik0yMi40NDg0IDQxLjk5OTVDMjEuNTg3MyA0MS45OTk1IDIwLjc0MjcgNDEuNjEyIDIwLjE4OTggNDAuOTYyNUMxOS42NTA2IDQwLjMyNjcgMTkuNDMzMyAzOS41MDggMTkuNTgxOCAzOC42NTY2TDIxLjgyMTEgMjUuNzcxTDI2LjAwMjcgMjMuNjcyNUwyNC4xNDMgMzQuNDg0MkwzMS40NDE0IDIyLjAwNTFIMjcuNTA0N0wyOC4yNTAyIDE4LjA2NzRIMzIuNDcwM0MzMy43MDgyIDE4LjA2NzQgMzQuODA4NiAxOC43MDMyIDM1LjQxOTQgMTkuNzcwMkMzNi4wMzAxIDIwLjgzNzIgMzYuMDE2MyAyMi4xMDM0IDM1LjM4MDkgMjMuMTU2N0wyNC44MDYgNDAuNzI1MUwyNC43OTIyIDQwLjc0NDJDMjQuMjQ0OCA0MS41NDM4IDIzLjM4OTIgNDEuOTk5NSAyMi40NDU2IDQxLjk5OTVIMjIuNDQ4NFoiIGZpbGw9InVybCgjcGFpbnQxX2xpbmVhcl8zMzMzOV85MzE3KSIvPgo8cGF0aCBvcGFjaXR5PSIwLjE1IiBkPSJNMTkuOTk5OSAyNy45MTY4SDE1LjYyM0MxNC4yNzUgMjcuOTE2OCAxMy40NTI1IDI2LjQ0ODYgMTQuMTYyMyAyNS4zMTM0TDI0LjQzMTggOC44NjM4N0MyNC45MzggOC4wNTA2NyAyNi4yMDYyIDguNTA5MTEgMjYuMDY4NiA5LjQ1MzNMMjQuMDY1OSAyMy4yMTc3TDIxLjg2NzggMjQuMzIyOUwyMy43Mjc1IDEzLjUxMTFMMTYuNDI5MSAyNS45OTAySDIwLjM2NThMMjAuMDAyNyAyNy45MTRMMTkuOTk5OSAyNy45MTY4WiIgZmlsbD0id2hpdGUiLz4KPHBhdGggb3BhY2l0eT0iMC4xNSIgZD0iTTI3Ljg4NDMgMjAuMDYyNUgzMi4yNjExQzMzLjYwOTEgMjAuMDYyNSAzNC40MzE3IDIxLjUzMDYgMzMuNzIxOSAyMi42NjU4TDIzLjQ0OTYgMzkuMTE1NEMyMi45NDM1IDM5LjkyODYgMjEuNjc1MiAzOS40NzAxIDIxLjgxMjggMzguNTI2TDIzLjgxNTUgMjQuNzYxNkwyNi4wMTM2IDIzLjY1NjRMMjQuMTUzOSAzNC40NjgxTDMxLjQ1MjMgMjEuOTg5MUgyNy41MTU2TDI3Ljg3ODggMjAuMDY1MkwyNy44ODQzIDIwLjA2MjVaIiBmaWxsPSJ3aGl0ZSIvPgo8ZGVmcz4KPGxpbmVhckdyYWRpZW50IGlkPSJwYWludDBfbGluZWFyXzMzMzM5XzkzMTciIHgxPSIyMC4xNjQ5IiB5MT0iMjUuNjM0MSIgeDI9IjIwLjE2NDkiIHkyPSIxLjcwMjA1IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+CjxzdG9wIHN0b3AtY29sb3I9IiMwMDU4RjEiLz4KPHN0b3Agb2Zmc2V0PSIwLjUzIiBzdG9wLWNvbG9yPSIjMDBCMUZGIi8+CjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzAzQTlGRCIvPgo8L2xpbmVhckdyYWRpZW50Pgo8bGluZWFyR3JhZGllbnQgaWQ9InBhaW50MV9saW5lYXJfMzMzMzlfOTMxNyIgeDE9IjI3LjcwMjgiIHkxPSI0MS45OTk1IiB4Mj0iMjcuNzAyOCIgeTI9IjE4LjA2NzQiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KPHN0b3Agc3RvcC1jb2xvcj0iI0ZGQUIxMSIvPgo8c3RvcCBvZmZzZXQ9IjAuMDkiIHN0b3AtY29sb3I9IiNGREE0MUEiLz4KPHN0b3Agb2Zmc2V0PSIwLjI0IiBzdG9wLWNvbG9yPSIjRkE5MjMyIi8+CjxzdG9wIG9mZnNldD0iMC40MyIgc3RvcC1jb2xvcj0iI0Y0NzQ1QiIvPgo8c3RvcCBvZmZzZXQ9IjAuNjUiIHN0b3AtY29sb3I9IiNFRDRCOTIiLz4KPHN0b3Agb2Zmc2V0PSIwLjkiIHN0b3AtY29sb3I9IiNFMzE3RDkiLz4KPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjREYwMEY5Ii8+CjwvbGluZWFyR3JhZGllbnQ+CjwvZGVmcz4KPC9zdmc+Cg==").into_bytes()))
     }
@@ -270,7 +270,7 @@ impl UDT for PausableUDT {
 
 // #[ssri_module(base = "UDT")]
 impl UDTPausable for PausableUDT {
-    // #[ssri_method(level = "cell", transaction = true)]
+    // #[ssri_method(level = "script", transaction = true)]
     fn pause(tx: Option<Transaction>, lock_hashes: &Vec<[u8; 32]>) -> Result<Transaction, Error> {
         let mut deduped_lock_hashes = lock_hashes.clone();
         let tx_builder = match tx {
@@ -430,7 +430,7 @@ impl UDTPausable for PausableUDT {
             .build());
     }
 
-    // #[ssri_method(level = "cell", transaction = true)]
+    // #[ssri_method(level = "script", transaction = true)]
     fn unpause(tx: Option<Transaction>, lock_hashes: &Vec<[u8; 32]>) -> Result<Transaction, Error> {
         let tx_builder = match tx {
             Some(ref tx) => tx.clone().as_builder(),
@@ -537,7 +537,7 @@ impl UDTPausable for PausableUDT {
             .build());
     }
 
-    // #[ssri_method(level = "script", transaction = false)]
+    // #[ssri_method(level = "script")]
     fn is_paused(lock_hashes: &Vec<[u8; 32]>) -> Result<Vec<bool>, Error> {
         debug!("Entered is_paused");
         debug!("lock_hashes: {:?}", lock_hashes);
@@ -591,7 +591,7 @@ impl UDTPausable for PausableUDT {
                             }
                         }
                         false => {
-                            // SSRI path to find next pausable data
+                            // SSRI way to find next pausable data
                             let next_out_point = find_out_point_by_type(next_type_script)?;
                             from_slice(&find_cell_data_by_out_point(next_out_point)?, false)?
                         }
@@ -604,7 +604,7 @@ impl UDTPausable for PausableUDT {
         Ok(result)
     }
 
-    // #[ssri_method(level = "code", transaction = false)]
+    // #[ssri_method(level = "script")]
     fn enumerate_paused(mut offset: u64, limit: u64) -> Result<Byte32Vec, Error> {
         debug!("Entered enumerate_paused");
         let mut pausable_data_vec: Vec<UDTPausableData> = Vec::new();

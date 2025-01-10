@@ -29,7 +29,6 @@ pub enum Error {
     InvalidVmVersion,
 
     // * Molecule Error
-    // TODO: Unable to imple From<molecule::Error::VerificationError> for Error perhaps due to versioning.
     MoleculeVerificationError,
 
     // * Serde Molecule Error

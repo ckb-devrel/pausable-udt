@@ -1,0 +1,11 @@
+in_contract_pause_list = [ ]
+
+[next_type_script]
+code_hash = ""
+hash_type = ""
+args = ""
+
+[udt_data]
+name = ""
+symbol = ""
+decimals = 6
